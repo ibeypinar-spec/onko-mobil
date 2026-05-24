@@ -6,6 +6,9 @@ import {
 import { supabase } from '../../lib/supabase';
 import { RENKLER } from '../../constants/renkler';
 
+const SUPABASE_CONFIGURED =
+  !process.env.EXPO_PUBLIC_SUPABASE_URL?.includes('YOUR_PROJECT');
+
 export default function GirisEkrani() {
   const [telefon, setTelefon] = useState('');
   const [kod, setKod] = useState('');
@@ -56,6 +59,19 @@ export default function GirisEkrani() {
           <Text style={styles.logoBaslik}>OnkoMobil</Text>
           <Text style={styles.logoAlt}>Tedavi Takip Uygulaması</Text>
         </View>
+
+        {/* Supabase kurulmamış uyarısı */}
+        {!SUPABASE_CONFIGURED && (
+          <View style={styles.kurulumUyari}>
+            <Text style={styles.kurulumUyariBaslik}>⚙️ Supabase Kurulumu Gerekli</Text>
+            <Text style={styles.kurulumUyariMetin}>
+              1. supabase.com → yeni proje oluşturun{'\n'}
+              2. SQL Editor → 001_initial.sql çalıştırın{'\n'}
+              3. .env.local dosyasını doldurun{'\n'}
+              4. Uygulamayı yeniden başlatın
+            </Text>
+          </View>
+        )}
 
         <View style={styles.kart}>
           {aşama === 'telefon' ? (
@@ -139,6 +155,16 @@ const styles = StyleSheet.create({
   logoEmoji: { fontSize: 56, marginBottom: 8 },
   logoBaslik: { fontSize: 28, fontWeight: '700', color: '#fff' },
   logoAlt: { fontSize: 14, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
+  kurulumUyari: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  kurulumUyariBaslik: { color: '#fff', fontWeight: '700', fontSize: 14, marginBottom: 8 },
+  kurulumUyariMetin: { color: 'rgba(255,255,255,0.85)', fontSize: 13, lineHeight: 20 },
   kart: {
     backgroundColor: '#fff',
     borderRadius: 20,
