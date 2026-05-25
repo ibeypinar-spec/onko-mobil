@@ -9,14 +9,23 @@ import { RENKLER } from '../../constants/renkler';
 const SUPABASE_CONFIGURED =
   !process.env.EXPO_PUBLIC_SUPABASE_URL?.includes('YOUR_PROJECT');
 
-type Mod = 'email' | 'telefon' | 'kod';
+// Telefon numarasını Supabase arka-e-postasına çevirir (SMS altyapısı gerekmez)
+function telefonToEmail(tel: string): string {
+  const t = tel.trim().replace(/[\s\-().]/g, '');
+  const norm = t.startsWith('+')  ? t :
+               t.startsWith('00') ? '+' + t.slice(2) :
+               t.startsWith('0')  ? '+90' + t.slice(1) : '+90' + t;
+  return norm.replace('+', '') + '@m.onkomobil';
+}
+
+type Mod = 'email' | 'telefon';
 
 export default function GirisEkrani() {
   const [mod, setMod] = useState<Mod>('email');
   const [email, setEmail] = useState('');
   const [sifre, setSifre] = useState('');
   const [telefon, setTelefon] = useState('');
-  const [kod, setKod] = useState('');
+  const [pin, setPin] = useState('');
   const [yukleniyor, setYukleniyor] = useState(false);
 
   // ── Email + şifre girişi ──────────────────────────────────────────────────
@@ -37,31 +46,26 @@ export default function GirisEkrani() {
     // Başarılıysa _layout.tsx yönlendirir
   }
 
-  // ── Telefon OTP ───────────────────────────────────────────────────────────
-  async function kodGonder() {
-    const temiz = telefon.trim().replace(/\s/g, '');
-    if (!temiz.startsWith('+')) {
-      Alert.alert('Hata', 'Telefon numaranızı +90 ile başlayarak girin\nÖrnek: +905321234567');
+  // ── Telefon + Erişim Kodu girişi (SMS gerekmez) ──────────────────────────
+  async function telefonGiris() {
+    const tel = telefon.trim();
+    if (!tel) {
+      Alert.alert('Eksik bilgi', 'Telefon numaranızı girin.');
+      return;
+    }
+    if (!pin.trim()) {
+      Alert.alert('Eksik bilgi', 'Erişim kodunuzu girin.');
       return;
     }
     setYukleniyor(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: temiz });
-    setYukleniyor(false);
-    if (error) {
-      Alert.alert('Hata', 'Kod gönderilemedi: ' + error.message);
-      return;
-    }
-    setMod('kod');
-  }
-
-  async function kodDogrula() {
-    const temiz = telefon.trim().replace(/\s/g, '');
-    setYukleniyor(true);
-    const { error } = await supabase.auth.verifyOtp({
-      phone: temiz, token: kod.trim(), type: 'sms',
+    const { error } = await supabase.auth.signInWithPassword({
+      email:    telefonToEmail(tel),
+      password: pin.trim(),
     });
     setYukleniyor(false);
-    if (error) Alert.alert('Hata', 'Kod hatalı veya süresi dolmuş.');
+    if (error) {
+      Alert.alert('Giriş hatası', 'Telefon numarası veya erişim kodu hatalı.\nDoktorunuzdan aldığınız kodu kontrol edin.');
+    }
   }
 
   return (
@@ -102,10 +106,10 @@ export default function GirisEkrani() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.modBtn, (mod === 'telefon' || mod === 'kod') && styles.modBtnAktif]}
+            style={[styles.modBtn, mod === 'telefon' && styles.modBtnAktif]}
             onPress={() => setMod('telefon')}
           >
-            <Text style={[styles.modBtnMetin, (mod === 'telefon' || mod === 'kod') && styles.modBtnMetinAktif]}>
+            <Text style={[styles.modBtnMetin, mod === 'telefon' && styles.modBtnMetinAktif]}>
               📱 Telefon
             </Text>
           </TouchableOpacity>
@@ -157,12 +161,12 @@ export default function GirisEkrani() {
             </>
           )}
 
-          {/* ── TELEFON MOD ── */}
+          {/* ── TELEFON + ERİŞİM KODU MOD ── */}
           {mod === 'telefon' && (
             <>
-              <Text style={styles.baslik}>SMS ile Giriş</Text>
+              <Text style={styles.baslik}>Telefon ile Giriş</Text>
               <Text style={styles.aciklama}>
-                Kayıtlı telefon numaranıza doğrulama kodu göndereceğiz.
+                Doktorunuzun verdiği telefon numarası ve erişim kodunu girin.
               </Text>
 
               <Text style={styles.etiket}>Telefon Numarası</Text>
@@ -176,53 +180,32 @@ export default function GirisEkrani() {
                 autoFocus
               />
 
-              <TouchableOpacity
-                style={[styles.buton, (yukleniyor || !telefon) && styles.butonPasif]}
-                onPress={kodGonder}
-                disabled={yukleniyor || !telefon.trim()}
-              >
-                {yukleniyor
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.butonMetin}>Kod Gönder →</Text>
-                }
-              </TouchableOpacity>
-            </>
-          )}
-
-          {/* ── KOD DOĞRULAMA ── */}
-          {mod === 'kod' && (
-            <>
-              <Text style={styles.baslik}>Kodu Girin</Text>
-              <Text style={styles.aciklama}>
-                {telefon} numarasına gönderilen 6 haneli kodu girin.
-              </Text>
-
-              <Text style={styles.etiket}>Doğrulama Kodu</Text>
+              <Text style={styles.etiket}>Erişim Kodu</Text>
               <TextInput
                 style={[styles.giris, styles.kodGiris]}
-                placeholder="123456"
+                placeholder="• • • • • •"
                 placeholderTextColor={RENKLER.metinAcik}
-                value={kod}
-                onChangeText={setKod}
+                value={pin}
+                onChangeText={setPin}
                 keyboardType="number-pad"
                 maxLength={6}
-                autoFocus
+                secureTextEntry
               />
 
               <TouchableOpacity
-                style={[styles.buton, (kod.length !== 6 || yukleniyor) && styles.butonPasif]}
-                onPress={kodDogrula}
-                disabled={kod.length !== 6 || yukleniyor}
+                style={[styles.buton, (yukleniyor || !telefon || !pin) && styles.butonPasif]}
+                onPress={telefonGiris}
+                disabled={yukleniyor || !telefon.trim() || !pin.trim()}
               >
                 {yukleniyor
                   ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.butonMetin}>Giriş Yap ✓</Text>
+                  : <Text style={styles.butonMetin}>Giriş Yap →</Text>
                 }
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.geriBtn} onPress={() => { setMod('telefon'); setKod(''); }}>
-                <Text style={styles.geriBtnMetin}>← Numarayı değiştir</Text>
-              </TouchableOpacity>
+              <Text style={styles.dipNotKucuk}>
+                Erişim kodunuzu doktorunuzdan aldığınız kılavuzda bulabilirsiniz.
+              </Text>
             </>
           )}
         </View>
@@ -282,5 +265,6 @@ const styles = StyleSheet.create({
   butonMetin: { color: '#fff', fontSize: 16, fontWeight: '700' },
   geriBtn:    { marginTop: 16, alignItems: 'center' },
   geriBtnMetin: { color: RENKLER.metinIkincil, fontSize: 14 },
-  dipNot:     { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginTop: 24 },
+  dipNot:       { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', marginTop: 24 },
+  dipNotKucuk:  { color: RENKLER.metinAcik, fontSize: 11, textAlign: 'center', marginTop: 12 },
 });

@@ -31,31 +31,33 @@ export default function SemptomEkrani() {
   async function gradeGuncelle(semptomId: string, grade: number) {
     if (!hastaId) return;
     setKayit(true);
-    const mevcut = gradeMap[semptomId];
-    const yeniGrade = mevcut === grade ? 0 : grade; // aynı grade'e tekrar basınca sıfırla
+    try {
+      const mevcut = gradeMap[semptomId];
+      const yeniGrade = mevcut === grade ? 0 : grade; // aynı grade'e tekrar basınca sıfırla
 
-    setGradeMap(prev => ({ ...prev, [semptomId]: yeniGrade }));
+      setGradeMap(prev => ({ ...prev, [semptomId]: yeniGrade }));
 
-    const semptomTanim = SEMPTOMLAR.find(s => s.id === semptomId)!;
-    const bildirimTuru = yeniGrade >= semptomTanim.acilGrade ? 'acil' : 'gunluk';
+      const semptomTanim = SEMPTOMLAR.find(s => s.id === semptomId)!;
+      const bildirimTuru = yeniGrade >= semptomTanim.acilGrade ? 'acil' : 'gunluk';
 
-    await semptomEkle({
-      hastaId,
-      ctcaeTerm: semptomId,
-      grade: yeniGrade,
-      bildirimTuru,
-    });
+      await semptomEkle({
+        hastaId,
+        ctcaeTerm: semptomId,
+        grade: yeniGrade,
+        bildirimTuru,
+      });
 
-    if (yeniGrade >= semptomTanim.acilGrade && yeniGrade >= 3) {
-      await acilBildirimGoster(semptomTanim.ad);
-      Alert.alert(
-        '🚨 Şiddetli Semptom',
-        `${semptomTanim.ad} Grade ${yeniGrade} bildiriminiz doktorunuza iletildi.\n\nGerekirse kliniğinizi arayın.`,
-        [{ text: 'Anladım' }]
-      );
+      if (yeniGrade >= semptomTanim.acilGrade && yeniGrade >= 3) {
+        await acilBildirimGoster(semptomTanim.ad).catch(() => {}); // bildirim izni yoksa sessizce geç
+        Alert.alert(
+          '🚨 Şiddetli Semptom',
+          `${semptomTanim.ad} Grade ${yeniGrade} bildiriminiz doktorunuza iletildi.\n\nGerekirse kliniğinizi arayın.`,
+          [{ text: 'Anladım' }]
+        );
+      }
+    } finally {
+      setKayit(false); // hata olsa bile butonları serbest bırak
     }
-
-    setKayit(false);
   }
 
   async function notKaydet(semptomId: string) {

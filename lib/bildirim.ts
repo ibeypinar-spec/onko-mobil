@@ -39,9 +39,11 @@ export async function bildirimIzniAl(): Promise<string | null> {
     });
   }
 
-  const token = await Notifications.getExpoPushTokenAsync({
-    projectId: Constants.expoConfig?.extra?.eas?.projectId,
-  });
+  // EAS projectId yapılandırılmışsa Expo push token al
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+  if (!projectId) return null; // Geliştirme ortamında EAS yoksa token atla
+
+  const token = await Notifications.getExpoPushTokenAsync({ projectId });
   return token.data;
 }
 
@@ -55,6 +57,7 @@ export async function gunlukCheckInKur(saat: { hour: number; minute: number }) {
       title: '💊 Günlük Kontrol',
       body: 'Bugün nasıl hissediyorsunuz? İlaçlarınızı aldınız mı?',
       sound: true,
+      channelId: 'onko-default',
       data: { tip: 'gunluk_checkin' },
     },
     trigger: {
@@ -76,6 +79,7 @@ export async function ilacHatirlatmaKur(ilacAdi: string, saat: string, ilacId: s
       title: `💊 İlaç Zamanı`,
       body: `${ilacAdi} — almayı unutmayın`,
       sound: true,
+      channelId: 'onko-default',
       data: { tip: 'ilac_hatirlatma', ilacId },
     },
     trigger: {
@@ -101,6 +105,7 @@ export async function ivHatirlatmaKur(tarih: string, protokol: string) {
         title: '🏥 Yarın Kemoterapi',
         body: `${protokol} — yarın hastaneye gelmeyi unutmayın`,
         sound: true,
+        channelId: 'onko-default',
         data: { tip: 'iv_oncesi', tarih },
       },
       trigger: {
@@ -119,6 +124,7 @@ export async function ivHatirlatmaKur(tarih: string, protokol: string) {
         title: '❓ Kemoterapiden sonra nasılsınız?',
         body: 'Bugün nasıl hissettiniz? Birkaç dakikanızı ayırın.',
         sound: true,
+        channelId: 'onko-default',
         data: { tip: 'post_iv', tarih },
       },
       trigger: {
@@ -137,6 +143,7 @@ export async function acilBildirimGoster(semptom: string) {
       title: '🚨 Şiddetli Semptom Bildirildi',
       body: `${semptom} için Grade 3+ bildiriminiz doktorunuza iletildi. Gerekirse kliniği arayın.`,
       sound: true,
+      channelId: 'onko-acil',
       priority: Notifications.AndroidNotificationPriority.MAX,
       data: { tip: 'acil' },
     },

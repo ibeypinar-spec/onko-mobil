@@ -54,35 +54,36 @@ export default function RootLayout() {
     }
   }, [session, hazir]);
 
-  // Yüklenirken splash
-  if (!hazir) {
-    return (
-      <View style={styles.splash}>
-        <StatusBar style="light" />
-        <Text style={styles.splashEmoji}>🏥</Text>
-        <Text style={styles.splashBaslik}>OnkoMobil</Text>
-        <ActivityIndicator color="rgba(255,255,255,0.7)" style={{ marginTop: 32 }} />
-      </View>
-    );
-  }
-
+  // Stack her zaman render edilmeli ki router.replace() çalışsın.
+  // Splash overlay olarak üstüne gelir, hazır olunca kaybolur.
   return (
     <>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
       </Stack>
+
+      {/* Yüklenirken splash — Stack üzerinde absolute overlay */}
+      {!hazir && (
+        <View style={styles.splash}>
+          <Text style={styles.splashEmoji}>🏥</Text>
+          <Text style={styles.splashBaslik}>OnkoMobil</Text>
+          <ActivityIndicator color="rgba(255,255,255,0.7)" style={{ marginTop: 32 }} />
+        </View>
+      )}
     </>
   );
 }
 
 const styles = StyleSheet.create({
   splash: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: RENKLER.birincil,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 999,
   },
   splashEmoji:  { fontSize: 64 },
   splashBaslik: { fontSize: 28, fontWeight: '800', color: '#fff', marginTop: 16 },
